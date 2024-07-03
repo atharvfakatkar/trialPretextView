@@ -6292,6 +6292,16 @@ ToggleToolTip(GLFWwindow* window)
     }
 }
 
+// global_function
+// void 
+// jumpToDiagonal(GLFWwindow* window)
+// {
+//     Camera_Position.x = Camera_Position.y;
+//     // Camera_Position.x = pos;
+//     // ClampCamera();
+//     // Redisplay = 1;
+// }
+
 #if 0
 enum
 MouseButon
@@ -6666,6 +6676,10 @@ KeyBoard(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods)
                     else if (MetaData_Edit_Mode && (mods & GLFW_MOD_SHIFT)) memset(Map_State->metaDataFlags, 0, Number_of_Pixels_1D * sizeof(u64));
                     else keyPressed = 0;
                     break;
+                
+                // case GLFW_KEY_J:
+                //     jumpToDiagonal(window);
+                //     break;
 
                 case GLFW_KEY_M:
                     keyPressed = ToggleMetaDataMode(window);
@@ -6674,7 +6688,7 @@ KeyBoard(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods)
                 case GLFW_KEY_I:
                     Contig_Ids->on = !Contig_Ids->on;
                     break;
-
+                    
                 case GLFW_KEY_U:
                     UI_On = !UI_On;
                     ++NK_Device->lastContextMemory[0];
@@ -9037,6 +9051,7 @@ MainArgs
     }
     
     Redisplay = 1;
+    char searchbuf[256] = {0};
     while (!glfwWindowShouldClose(window))
     {
         if (Redisplay)
@@ -9687,37 +9702,58 @@ MainArgs
                             }
                         }
 
-                        {
+                        {   
+                            // somewhere out of cycle
+                            
+
                             nk_layout_row_dynamic(NK_Context, Screen_Scale.y * 30.0f, 1);
                             if (nk_tree_push(NK_Context, NK_TREE_TAB, "Input Sequences", NK_MINIMIZED))
                             {
+                                // in window
+                                nk_edit_string_zero_terminated (NK_Context, NK_EDIT_FIELD, searchbuf, sizeof(searchbuf) - 1, nk_filter_default);
+                                // if (nk_button_label (NK_Context, "Done"))
+                                //     printf ("%s\n", searchbuf);
                                 nk_layout_row_dynamic(NK_Context, Screen_Scale.y * 30.0f, 1);
 
                                 ForLoop(Number_of_Original_Contigs)
                                 {
                                     original_contig *cont = Original_Contigs + index;
 
-                                    char buff[128];
-                                    stbsp_snprintf((char *)buff, sizeof(buff), "%s (%u)", (char *)cont->name, cont->nContigs);
-
-                                    if (nk_tree_push_id(NK_Context, NK_TREE_TAB, (char *)buff, NK_MINIMIZED, index))
+                                    if (strstr(((char *)cont->name), searchbuf) != NULL)
                                     {
-                                        nk_layout_row_dynamic(NK_Context, Screen_Scale.y * 30.0f, 2);
+                                        char buff[128];
+                                        stbsp_snprintf((char *)buff, sizeof(buff), "%s (%u)", (char *)cont->name, cont->nContigs);
 
-                                        ForLoop2(cont->nContigs)
+                                        if (nk_tree_push_id(NK_Context, NK_TREE_TAB, (char *)buff, NK_MINIMIZED, index))
                                         {
-                                            stbsp_snprintf((char *)buff, sizeof(buff), "%u", index2 + 1);
-                                            if (nk_button_label(NK_Context, (char *)buff))
-                                            {
-                                                f32 pos = (f32)((f64)cont->contigMapPixels[index2] / (f64)Number_of_Pixels_1D) - 0.5f;
-                                                Camera_Position.x = pos;
-                                                Camera_Position.y = -pos;
-                                            }
+                                            nk_layout_row_dynamic(NK_Context, Screen_Scale.y * 30.0f, 2);
 
-                                            if (nk_button_label(NK_Context, "Rebuild")) RebuildContig(cont->contigMapPixels[index2]);
+                                            ForLoop2(cont->nContigs)
+                                            {
+                                                stbsp_snprintf((char *)buff, sizeof(buff), "%u", index2 + 1);
+                                                if (nk_button_label(NK_Context, (char *)buff))
+                                                {
+                                                    f32 pos = (f32)((f64)cont->contigMapPixels[index2] / (f64)Number_of_Pixels_1D) - 0.5f;
+                                                    Camera_Position.x = pos;
+                                                    Camera_Position.y = -pos;
+
+                                                    Camera_Position.z = 1.0f;
+
+                                                    f32 contigSizeInPixels = (f32)cont->contigMapPixels[index2];
+                                                    f32 screenWidth = (f32)width;
+
+                                                    // f32 zoomLevel =(f32)(contigSizeInPixels / (screenWidth * index2));
+                                                    f32 zoomLevel =(f32)(contigSizeInPixels / (screenWidth));
+                                                    ZoomCamera(zoomLevel);
+                        
+                                                    Redisplay = 1;
+                                                }
+
+                                                if (nk_button_label(NK_Context, "Rebuild")) RebuildContig(cont->contigMapPixels[index2]);
+                                            }
+                                            
+                                            nk_tree_pop(NK_Context);
                                         }
-                                        
-                                        nk_tree_pop(NK_Context);
                                     }
                                 }
 
