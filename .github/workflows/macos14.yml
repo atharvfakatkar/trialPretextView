@@ -56,7 +56,7 @@ jobs:
 
         if [ `uname` == Darwin ]; then
           [ -d app/PretextView.app ] && rm -rf app/PretextView.app
-          env CC=clang CXX=clang MACOSX_DEPLOYMENT_TARGET=14.3 meson setup --buildtype=debug --prefix=$(pwd)/app/PretextView.app --bindir=Contents/MacOS --unity on builddir
+          env CC=clang CXX=clang MACOSX_DEPLOYMENT_TARGET=14.5 meson setup --buildtype=debug --prefix=$(pwd)/app/PretextView.app --bindir=Contents/MacOS --unity on builddir
         else
           env CC=clang CXX=clang meson setup --buildtype=debug --prefix=$(pwd)/app --bindir=./ --unity on builddir
         fi
