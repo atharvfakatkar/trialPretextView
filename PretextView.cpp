@@ -1797,9 +1797,7 @@ AddWayPoint(point2f coords, u08 isvert = 1)
 
         wayp->node = node;
         node->wayp = wayp;
-// #ifdef TEST
         (isvert) ? wayp->isVertical = 1 : wayp->isVertical = 0;
-// #endif
     }
 }
 
@@ -3511,16 +3509,17 @@ Render()
                 fonsSetColor(FontStash_Context, FourFloatColorToU32(Waypoint_Mode_Data->text));
 
                 f32 textBoxHeight = lh;
-                textBoxHeight *= 4.0f;
+                textBoxHeight *= 5.0f;
                 textBoxHeight += 3.0f;
                 f32 spacing = 10.0f;
 
                 char *helpText1 = (char *)"Waypoint Edit Mode";
                 char *helpText2 = (char *)"W: exit";
-                char *helpText3 = (char *)"Left Click: place";
-                char *helpText4 = (char *)"Middle Click / Spacebar: delete";
+                char *helpText3 = (char *)"Left Click: place vertical";
+                char *helpText4 = (char *)"Right Click: place horizontal";
+                char *helpText5 = (char *)"Middle Click / Spacebar: delete";
 
-                f32 textWidth = fonsTextBounds(FontStash_Context, 0, 0, helpText4, 0, NULL);
+                f32 textWidth = fonsTextBounds(FontStash_Context, 0, 0, helpText5, 0, NULL);
 
                 glUseProgram(Flat_Shader->shaderProgram);
                 glUniform4fv(Flat_Shader->colorLocation, 1, (f32 *)&Waypoint_Mode_Data->bg);
@@ -3547,6 +3546,8 @@ Render()
                 fonsDrawText(FontStash_Context, width - spacing - textWidth, height - spacing - textBoxHeight + textY, helpText3, 0);
                 textY += (1.0f + lh);
                 fonsDrawText(FontStash_Context, width - spacing - textWidth, height - spacing - textBoxHeight + textY, helpText4, 0);
+                textY += (1.0f + lh);
+                fonsDrawText(FontStash_Context, width - spacing - textWidth, height - spacing - textBoxHeight + textY, helpText5, 0);
             }
         }
        
@@ -5540,20 +5541,47 @@ SetTheme(struct nk_context *ctx, enum theme theme)
     Current_Theme = theme;
 }
 
+// global_variable
+// const char *
+// Default_Tags[] = 
+// {
+//     "Haplotig",
+//     "Unloc",
+//     "X",
+//     "Y",
+//     "Z",
+//     "W",
+//     "HAP1",
+//     "HAP2",
+//     "Target",
+//     "Conataminant"
+// };
+
 global_variable
 const char *
 Default_Tags[] = 
 {
-    "Haplotig",
-    "Unloc",
-    "X",
-    "Y",
-    "Z",
-    "W",
     "HAP1",
     "HAP2",
     "Target",
-    "Conataminant"
+    "Contaminant",
+    "X1",
+    "X2",
+    "Y1",
+    "Y2",
+    "Z1",
+    "Z2",
+    "W1",
+    "W2",
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V",
+    "B1",
+    "B2",
+    "B3",
+    "U"
 };
 
 global_function
@@ -6354,15 +6382,14 @@ ToggleToolTip(GLFWwindow* window)
     }
 }
 
-// global_function
-// void 
-// jumpToDiagonal(GLFWwindow* window)
-// {
-//     Camera_Position.x = Camera_Position.y;
-//     // Camera_Position.x = pos;
-//     // ClampCamera();
-//     // Redisplay = 1;
-// }
+global_function
+void 
+jumpToDiagonal(GLFWwindow* window)
+{
+ 
+    ClampCamera();
+    Redisplay = 1;
+}
 
 #if 0
 enum
@@ -6699,6 +6726,48 @@ KeyBoard(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods)
                     }
                     break;
 
+                case GLFW_KEY_1:
+                    if(Extensions.head)
+                    {
+                        TraverseLinkedList(Extensions.head, extension_node)
+                            {
+                                switch (node->type)
+                                {
+                                    case extension_graph:
+                                    {
+                                        
+                                        graph *gph = (graph *)node->extension;
+                                        if (strcmp((char *)gph->name, "gap") == 0) {
+                                            gph->on = !gph->on;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                    }
+                    break;
+
+                case GLFW_KEY_2:
+                    if(Extensions.head)
+                    {
+                        TraverseLinkedList(Extensions.head, extension_node)
+                            {
+                                switch (node->type)
+                                {
+                                    case extension_graph:
+                                    {
+                                        
+                                        graph *gph = (graph *)node->extension;
+                                        if (strcmp((char *)gph->name, "coverage") == 0) {
+                                            gph->on = !gph->on;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                    }
+                    break;
+
                 case GLFW_KEY_S:
                     if (Edit_Mode)
                     {
@@ -6739,9 +6808,9 @@ KeyBoard(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods)
                     else keyPressed = 0;
                     break;
                 
-                // case GLFW_KEY_J:
-                //     jumpToDiagonal(window);
-                //     break;
+                case GLFW_KEY_J:
+                    jumpToDiagonal(window);
+                    break;
 
                 case GLFW_KEY_M:
                     keyPressed = ToggleMetaDataMode(window);
@@ -8119,10 +8188,16 @@ SaveState(u64 headerHash, char *path = 0, u08 overwrite = 0)
             memcpy(fileWriter, (const void *)MetaData_Mode_Data, sizeof(meta_mode_data));
             fileWriter += sizeof(meta_mode_data);
 
-            *fileWriter++ = ((u08 *)&nMetaFlags)[0];
-            *fileWriter++ = ((u08 *)&nMetaFlags)[1];
-            *fileWriter++ = ((u08 *)&nMetaFlags)[2];
-            *fileWriter++ = ((u08 *)&nMetaFlags)[3];
+            u16 counter = 0;
+            ForLoop(21)
+            {
+                *fileWriter++ = ((u08 *)&nMetaFlags)[counter];
+                counter++;
+            }
+            // *fileWriter++ = ((u08 *)&nMetaFlags)[0];
+            // *fileWriter++ = ((u08 *)&nMetaFlags)[1];
+            // *fileWriter++ = ((u08 *)&nMetaFlags)[2];
+            // *fileWriter++ = ((u08 *)&nMetaFlags)[3];
             ForLoop(Contigs->numberOfContigs)
             {
                 if (*(Contigs->contigs + index)->metaDataFlags)
@@ -8691,11 +8766,25 @@ LoadState(u64 headerHash, char *path)
                     nBytesRead += sizeof(meta_mode_data);
 
                     u32 nMetaFlags;
-                    ((u08 *)&nMetaFlags)[0] = *fileContents++;
-                    ((u08 *)&nMetaFlags)[1] = *fileContents++;
-                    ((u08 *)&nMetaFlags)[2] = *fileContents++;
-                    ((u08 *)&nMetaFlags)[3] = *fileContents++;
-                    nBytesRead += 4;
+                    if(oldStyle)
+                    {
+                        ((u08 *)&nMetaFlags)[0] = *fileContents++;
+                        ((u08 *)&nMetaFlags)[1] = *fileContents++;
+                        ((u08 *)&nMetaFlags)[2] = *fileContents++;
+                        ((u08 *)&nMetaFlags)[3] = *fileContents++;
+                        nBytesRead += 4;
+                    }
+                    else
+                    {
+                        u16 counter = 0;
+                        ForLoop(21)
+                        {
+                            ((u08 *)&nMetaFlags)[counter] = *fileContents++;
+                            counter++;
+                        }
+                        nBytesRead += 21;
+                    }
+
 
                     memset(Map_State->metaDataFlags, 0, Number_of_Pixels_1D * sizeof(u64));
                     ForLoop(nMetaFlags)
@@ -9772,18 +9861,14 @@ MainArgs
                         }
 
                         {   
-                            // somewhere out of cycle
-                            
-
                             nk_layout_row_dynamic(NK_Context, Screen_Scale.y * 30.0f, 1);
                             if (nk_tree_push(NK_Context, NK_TREE_TAB, "Input Sequences", NK_MINIMIZED))
                             {
-                                // in window
+                                nk_layout_row_dynamic(NK_Context, Screen_Scale.y * 30.0f, 3);
+                                nk_label(NK_Context, "Search: ", NK_TEXT_LEFT);
                                 nk_edit_string_zero_terminated (NK_Context, NK_EDIT_FIELD, searchbuf, sizeof(searchbuf) - 1, nk_filter_default);
-                                // if (nk_button_label (NK_Context, "Done"))
-                                //     printf ("%s\n", searchbuf);
-                                nk_layout_row_dynamic(NK_Context, Screen_Scale.y * 30.0f, 1);
 
+                                nk_layout_row_dynamic(NK_Context, Screen_Scale.y * 30.0f, 1);
                                 ForLoop(Number_of_Original_Contigs)
                                 {
                                     original_contig *cont = Original_Contigs + index;
@@ -9805,11 +9890,11 @@ MainArgs
                                                     f32 pos = (f32)((f64)cont->contigMapPixels[index2] / (f64)Number_of_Pixels_1D) - 0.5f;
                                                     Camera_Position.x = pos;
                                                     Camera_Position.y = -pos;
-
                                                     Camera_Position.z = 1.0f;
 
                                                     f32 contigSizeInPixels = (f32)cont->contigMapPixels[index2];
                                                     f32 screenWidth = (f32)width;
+                                                    
 
                                                     // f32 zoomLevel =(f32)(contigSizeInPixels / (screenWidth * index2));
                                                     f32 zoomLevel =(f32)(contigSizeInPixels / (screenWidth));
