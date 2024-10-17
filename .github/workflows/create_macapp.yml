@@ -51,6 +51,7 @@ jobs:
         conda activate test-environment
         cd builddir
         meson test
+
     - name: meson_install
       run: |
         source "$HOME/miniconda/etc/profile.d/conda.sh"
@@ -58,10 +59,15 @@ jobs:
         conda activate test-environment
         cd builddir
         meson install
+
+    - name: make_executable
+      run: |
+        chmod +x app/PretextView.app/Contents/MacOS/PretextView
+
     - name: create_artifact
       uses: actions/upload-artifact@v4
       with:
-        name: PretextView.zip
+        name: PretextView
         path: app/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
