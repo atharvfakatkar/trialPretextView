@@ -15,13 +15,12 @@ jobs:
       uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
-        install: mingw-w64-x86_64-toolchain
+        install: >-
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-python3
+          mingw-w64-x86_64-meson
+          mingw-w64-x86_64-ninja
         update: true
-
-    - name: Install dependencies
-      shell: msys2 {0}
-      run: |
-        pacman -S --noconfirm ninja meson mingw-w64-x86_64-gcc
 
     - name: Configure and build with Meson
       shell: msys2 {0}
