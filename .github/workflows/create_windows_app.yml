@@ -1,45 +1,64 @@
-name: Build Windows Executable
+name: Build PretextView
 
-on:
+on: 
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-
-    - name: Install MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: MINGW64
-        install: >-
-          mingw-w64-x86_64-toolchain
-          mingw-w64-x86_64-python3
-          mingw-w64-x86_64-meson
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-ninja
-        update: true
-
-    - name: Configure and build with Meson
-      shell: msys2 {0}
+    
+    - name: Install dependencies
       run: |
-        meson setup --buildtype=release --prefix=$(pwd)/app --bindir=. --unity on builddir
-        meson compile -C builddir
+        choco install ninja
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        choco install mingw
+        RefreshEnv
 
-    - name: Install the application
-      shell: msys2 {0}
+    - name: Set up MinGW
+      shell: bash
       run: |
-        meson install -C builddir
+        echo "Setting up MinGW environment"
+        export PATH=/C/tools/msys64/mingw64/bin:$PATH
+        pacman -Syu --noconfirm
+        pacman -S --noconfirm mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-pkg-config
 
-    - name: Make executable
+    - name: Configure Meson Build
+      shell: bash
       run: |
-        chmod +x app/PretextView.exe
+        export PATH=/C/tools/msys64/mingw64/bin:$PATH
+        meson setup --buildtype=release --prefix=$(pwd)/PretextView_build builddir
 
-    - name: Upload artifact
+    - name: Compile with Ninja
+      shell: bash
+      run: |
+        export PATH=/C/tools/msys64/mingw64/bin:$PATH
+        ninja -C builddir
+
+    - name: Run Meson Tests
+      shell: bash
+      run: |
+        export PATH=/C/tools/msys64/mingw64/bin:$PATH
+        ninja -C builddir test
+
+    - name: Install Executable
+      shell: bash
+      run: |
+        export PATH=/C/tools/msys64/mingw64/bin:$PATH
+        ninja -C builddir install
+
+    - name: Package Executable
+      run: |
+        cd PretextView_build
+        tar -czf PretextView_windows.tar.gz *
+    
+    - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: PretextView
-        path: app/*
+        name: PretextView_windows
+        path: PretextView_build/PretextView_windows.tar.gz
