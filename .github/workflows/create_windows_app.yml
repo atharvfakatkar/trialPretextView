@@ -18,11 +18,13 @@ jobs:
         choco install ninja
         choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
         choco install mingw
+        python -m pip install meson  # Install meson via pip
 
-    - name: Set up MinGW Path
+    - name: Set up MinGW and Python Path
       run: |
         $env:PATH += ";C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
-        Write-Host "MinGW added to PATH: $env:PATH"
+        $env:PATH += ";C:\hostedtoolcache\windows\Python\3.x.x\x64\Scripts"
+        Write-Host "Updated PATH: $env:PATH"
 
     - name: Configure Meson Build
       shell: bash
