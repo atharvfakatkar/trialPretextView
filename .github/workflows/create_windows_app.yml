@@ -1,0 +1,53 @@
+name: Build Windows Executable
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: Setup Miniconda
+      run: |
+        $conda_url = 'https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe'
+        Invoke-WebRequest $conda_url -OutFile miniconda.exe
+        Start-Process miniconda.exe -ArgumentList '/InstallationType=JustMe', '/AddToPath=0', '/RegisterPython=0', '/S', '/D=%USERPROFILE%\miniconda' -NoNewWindow -Wait
+        $Env:Path += ";$Env:USERPROFILE\miniconda\Scripts;$Env:USERPROFILE\miniconda"
+        conda config --set always_yes yes --set changeps1 no
+        conda update -q conda
+        conda install -c conda-forge mamba
+
+    - name: Setup build environment
+      run: |
+        mamba create -q -n test-environment -c conda-forge -c bioconda meson mingw-w64 samtools
+        conda activate test-environment
+        set CC=x86_64-w64-mingw32-gcc
+        set CXX=x86_64-w64-mingw32-g++
+        set WINDRES=x86_64-w64-mingw32-windres
+        meson setup --buildtype=release --prefix=%cd%\app --bindir=. --unity on builddir
+
+    - name: Meson Compile
+      run: |
+        conda activate test-environment
+        meson compile -C builddir
+
+    - name: Meson Test
+      run: |
+        conda activate test-environment
+        meson test -C builddir
+
+    - name: Meson Install
+      run: |
+        conda activate test-environment
+        meson install -C builddir
+
+    - name: Create executable artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PretextView
+        path: app/*
