@@ -21,7 +21,10 @@ jobs:
         # Install Miniconda silently
         Start-Process -Wait -FilePath .\miniconda.exe -ArgumentList "/InstallationType=JustForMe", "/AddToPath=1", "/S", "/D=$env:USERPROFILE\miniconda"
 
-        # Activate Conda
+        # Set the conda environment to the newly installed Miniconda
+        $env:PATH = "$env:USERPROFILE\miniconda\Scripts;$env:USERPROFILE\miniconda\Scripts\conda;$env:USERPROFILE\miniconda\Library\bin;$env:PATH"
+
+        # Activate Conda environment
         & "$env:USERPROFILE\miniconda\Scripts\activate.bat"
 
         # Configure Conda environment
