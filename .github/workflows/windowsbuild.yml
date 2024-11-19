@@ -1,6 +1,6 @@
 name: test
 
-on: 
+on:
   workflow_dispatch:
 
 jobs:
@@ -12,55 +12,62 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - name: setup_conda
+    - name: Setup Conda
       run: |
-        set conda_url=https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe
-        curl -L %conda_url% -o miniconda.exe
-        start /wait miniconda.exe /InstallationType=JustForMe /AddToPath=1 /S /D=%USERPROFILE%\miniconda
-        call "%USERPROFILE%\miniconda\Scripts\activate.bat"
+        # Download Miniconda installer
+        $conda_url = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
+        Invoke-WebRequest -Uri $conda_url -OutFile miniconda.exe
+
+        # Install Miniconda silently
+        Start-Process -Wait -FilePath .\miniconda.exe -ArgumentList "/InstallationType=JustForMe", "/AddToPath=1", "/S", "/D=$env:USERPROFILE\miniconda"
+
+        # Activate Conda
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat"
+
+        # Configure Conda environment
         conda config --set always_yes yes --set changeps1 no
         conda update -q conda
         conda info -a
-        conda install -c conda-forge mamba
-        
-        set toolchain=clangxx_win-64
-        
-        mamba create -q -n test-environment -c conda-forge -c bioconda -y meson clang %toolchain% samtools
 
-    - name: setup_meson
+        # Install required tools via mamba
+        conda install -c conda-forge mamba
+        mamba create -q -n test-environment -c conda-forge -c bioconda -y meson clangxx_win-64 samtools
+
+    - name: Setup Meson
       run: |
-        call "%USERPROFILE%\miniconda\Scripts\activate.bat" test-environment
-        set CC=clang
-        set CXX=clang
-        set CMAKE_GENERATOR=Ninja
-        set MESON_DEFAULT=release
+        # Activate the test environment
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
+        
+        # Set the necessary environment variables for Meson build
+        $env:CC = "clang"
+        $env:CXX = "clang"
+        $env:MACOSX_DEPLOYMENT_TARGET = "10.10"  # Although this is for macOS, leaving it here for completeness
         meson setup --buildtype=release --prefix=%cd%\build\PretextView --bindir=bin --unity on builddir
 
-    - name: meson_compile
+    - name: Meson Compile
       run: |
-        call "%USERPROFILE%\miniconda\Scripts\activate.bat" test-environment
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
         cd builddir
         meson compile
 
-    - name: meson_test
+    - name: Meson Test
       run: |
-        call "%USERPROFILE%\miniconda\Scripts\activate.bat" test-environment
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
         cd builddir
         meson test
 
-    - name: meson_install
+    - name: Meson Install
       run: |
-        call "%USERPROFILE%\miniconda\Scripts\activate.bat" test-environment
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
         cd builddir
         meson install
 
-    - name: make_executable
+    - name: Make Executable
       run: |
-        # Ensure the executable has the correct file permissions (in Windows, this is often unnecessary)
-        # You might not need this line on Windows as executables are directly usable
+        # Ensure the executable is built and ready to go (on Windows, executables are inherently runnable)
         echo "Ensuring executable is built"
 
-    - name: create_artifact
+    - name: Create Artifact
       uses: actions/upload-artifact@v4
       with:
         name: PretextView
