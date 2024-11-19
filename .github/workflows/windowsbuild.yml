@@ -1,0 +1,69 @@
+name: test
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+
+    - name: setup_conda
+      run: |
+        set conda_url=https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe
+        curl -L %conda_url% -o miniconda.exe
+        start /wait miniconda.exe /InstallationType=JustForMe /AddToPath=1 /S /D=%USERPROFILE%\miniconda
+        call "%USERPROFILE%\miniconda\Scripts\activate.bat"
+        conda config --set always_yes yes --set changeps1 no
+        conda update -q conda
+        conda info -a
+        conda install -c conda-forge mamba
+        
+        set toolchain=clangxx_win-64
+        
+        mamba create -q -n test-environment -c conda-forge -c bioconda -y meson clang %toolchain% samtools
+
+    - name: setup_meson
+      run: |
+        call "%USERPROFILE%\miniconda\Scripts\activate.bat" test-environment
+        set CC=clang
+        set CXX=clang
+        set CMAKE_GENERATOR=Ninja
+        set MESON_DEFAULT=release
+        meson setup --buildtype=release --prefix=%cd%\build\PretextView --bindir=bin --unity on builddir
+
+    - name: meson_compile
+      run: |
+        call "%USERPROFILE%\miniconda\Scripts\activate.bat" test-environment
+        cd builddir
+        meson compile
+
+    - name: meson_test
+      run: |
+        call "%USERPROFILE%\miniconda\Scripts\activate.bat" test-environment
+        cd builddir
+        meson test
+
+    - name: meson_install
+      run: |
+        call "%USERPROFILE%\miniconda\Scripts\activate.bat" test-environment
+        cd builddir
+        meson install
+
+    - name: make_executable
+      run: |
+        # Ensure the executable has the correct file permissions (in Windows, this is often unnecessary)
+        # You might not need this line on Windows as executables are directly usable
+        echo "Ensuring executable is built"
+
+    - name: create_artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PretextView
+        path: build\bin\PretextView.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
