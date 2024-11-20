@@ -8,56 +8,67 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-    
-    - name: Setup Miniconda
-      uses: conda-incubator/setup-miniconda@v3
-      with:
-        auto-update-conda: true
-        python-version: 3.10
-        activate-environment: test-environment
-        environment-file: false
 
-    - name: Install Build Dependencies
-      shell: powershell
+    - name: Setup Conda
       run: |
-        conda install -c conda-forge -y meson ninja clangxx cmake pkg-config
-        conda list
-    
+        # Download Miniconda installer
+        $conda_url = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
+        Invoke-WebRequest -Uri $conda_url -OutFile miniconda.exe
+        # Install Miniconda silently
+        Start-Process -Wait -FilePath .\miniconda.exe -ArgumentList "/InstallationType=JustForMe", "/AddToPath=1", "/S", "/D=$env:USERPROFILE\miniconda"
+        # Set the conda environment to the newly installed Miniconda
+        $env:PATH = "$env:USERPROFILE\miniconda\Scripts;$env:USERPROFILE\miniconda\Scripts\conda;$env:USERPROFILE\miniconda\Library\bin;$env:PATH"
+        # Activate Conda environment
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat"
+        # Configure Conda environment
+        conda config --set always_yes yes --set changeps1 no
+        conda update -q conda
+        conda info -a
+        # Install required tools via mamba
+        conda install -c conda-forge mamba
+        mamba create -q -n test-environment -c conda-forge -c bioconda -y meson clangxx_win-64
+
     - name: Verify Meson Installation
-      shell: powershell
       run: |
-        conda run -n test-environment meson --version
-        conda run -n test-environment which meson
-    
-    - name: Configure Build
-      shell: powershell
+        # Activate the test environment
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
+        # Add Scripts directory to PATH for Meson
+        $env:PATH += ";$env:USERPROFILE\miniconda\envs\test-environment\Scripts"
+        where meson
+        meson --version
+
+    - name: Setup Meson
       run: |
-        $env:CC = "clang"
-        $env:CXX = "clang++"
-        conda run -n test-environment meson setup `
-          --buildtype=release `
-          --prefix="${{ github.workspace }}\build\PretextView" `
-          --bindir=bin `
-          --unity on `
-          builddir
-    
-    - name: Compile Project
-      shell: powershell
+        # Activate the test environment
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
+        meson setup --buildtype=release --prefix=%cd%\build\PretextView --bindir=bin --unity on builddir
+
+    - name: Meson Compile
       run: |
-        conda run -n test-environment meson compile -C builddir
-    
-    - name: Run Tests
-      shell: powershell
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
+        cd builddir
+        meson compile
+
+    - name: Meson Test
       run: |
-        conda run -n test-environment meson test -C builddir
-    
-    - name: Install Project
-      shell: powershell
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
+        cd builddir
+        meson test
+
+    - name: Meson Install
       run: |
-        conda run -n test-environment meson install -C builddir
-    
-    - name: Upload Artifact
+        & "$env:USERPROFILE\miniconda\Scripts\activate.bat" test-environment
+        cd builddir
+        meson install
+
+    - name: Make Executable
+      run: |
+        echo "Ensuring executable is built"
+
+    - name: Create Artifact
       uses: actions/upload-artifact@v4
       with:
         name: PretextView
-        path: builddir\bin\PretextView.exe
+        path: build\bin\PretextView.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
